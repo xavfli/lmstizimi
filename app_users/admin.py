@@ -2,14 +2,17 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import User,Student,Worker,Course,Teacher,TableType,Group
 
+
 class UserMainAdmin(UserAdmin):
-    list_display = ( 'full_name', 'phone', 'is_active', 'is_staff', 'is_superuser',"is_user","is_teacher","is_student",)
-    fieldsets = UserAdmin.fieldsets + (
-        ("Additional Info", {
-            "fields": ("full_name", "is_user", "is_admin", "is_student"),
-        }),
+    list_display = ("phone", "is_student", "is_active", "is_staff")
+    ordering = ("phone",)
+    search_fields = ("phone",)
+
+    # Agar `AbstractBaseUser` dan foydalansangiz, `fieldsets` ni qo‘lda sozlang
+    fieldsets = (
+        (None, {"fields": ("phone", "password")}),
+        ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser")}),
     )
-    ordering = ("full_name",)
 
 admin.site.register(User, UserMainAdmin)
 admin.site.register(Student)

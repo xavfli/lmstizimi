@@ -34,9 +34,8 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
-
     phone_regex = RegexValidator(regex=r'^\+?1?\d{9,14}$',
-                                 message="Phone number must be entered in the format: '9989012345678'. Up to 14 digits allowed.")
+                                 message="Phone number must be entered in the format: '+9989012345678'. Up to 14 digits allowed.")
     phone = models.CharField(validators=[phone_regex], max_length=17, unique=True)
     full_name = models.CharField(max_length=50, null=True, blank=True)
     is_active = models.BooleanField(default=True)
@@ -63,23 +62,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     def has_module_perms(self, app_label):
         return self.is_admin
 
-    # groups = models.ManyToManyField(
-    #     "auth.Group",
-    #     related_name="custom_user_groups",  # related_name o'zgartirildi
-    #     blank=True,
-    # )
-    #
-    # user_permissions = models.ManyToManyField(
-    #     "auth.Permission",
-    #     related_name="custom_user_permissions",  # related_name o'zgartirildi
-    #     blank=True,
-    # )
-
-# class User2(models.Model):
-#     email = models.EmailField(unique=True)
-#
-#     def __str__(self):
-#         return self.email
 
 
 class TokenModel(models.Model):
@@ -113,8 +95,9 @@ class Departments(models.Model):
 
 
 class Student(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    course = models.ManyToManyField('app_users.Course')
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True , related_name='student')
+    phone = models.CharField(validators=[User.phone_regex], max_length=17, unique=True)
+    course = models.ForeignKey('app_users.Course', on_delete=models.SET_NULL, null=True, blank=True)
     group = models.ManyToManyField('Group', related_name='student')
     is_line = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
@@ -124,7 +107,7 @@ class Student(models.Model):
     is_graduated = models.BooleanField(default=True)
 
     def __str__(self):
-        return self.user.phone
+        return self.phone
 
 
 
@@ -151,11 +134,12 @@ class TableType(models.Model):
 
 
 class Table(models.Model):
+    name = models.CharField(max_length=255, unique=True)
     type = models.ForeignKey(TableType, on_delete=models.RESTRICT)
     descriptions = models.CharField(max_length=500, blank=True, null=True)
 
     def __str__(self):
-        return self.type
+        return self.name
 
 
 class Course(models.Model):
@@ -168,7 +152,7 @@ class Course(models.Model):
 
 
 class Group(models.Model):
-    name = models.CharField(max_length=255, unique=True, default='Default Group Name')
+    name = models.CharField(max_length=255, unique=True)
     title = models.CharField(max_length=50, unique=True)
     course = models.ForeignKey('app_users.Course', on_delete=models.CASCADE, null=True, blank=True)
     teacher = models.ManyToManyField(Worker, related_name='teacher')
@@ -179,7 +163,7 @@ class Group(models.Model):
     descriptions = models.CharField(max_length=500, blank=True, null=True)
 
     def __str__(self):
-        return f'{self.title}, {self.course}'
+        return str(self.name)
 
 
 

@@ -7,6 +7,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = '__all__'
 
+
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
@@ -18,6 +19,7 @@ class CourseStatisticsSerializer(serializers.Serializer):
     registered_students = serializers.IntegerField()
     active_students = serializers.IntegerField()
     graduated_students = serializers.IntegerField()
+
 
 
 class ChangePasswordSerializer(serializers.ModelSerializer):
@@ -72,6 +74,7 @@ class DepartmentsSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'is_active', 'descriptions']
 
 
+
 class WorkerSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(write_only=True)  # Faqat yozish uchun
     full_name = serializers.CharField(write_only=True)  # Faqat yozish uchun
@@ -88,12 +91,15 @@ class WorkerSerializer(serializers.ModelSerializer):
         return worker
 
 
-
-
 class GroupSerializer(serializers.ModelSerializer):
+    # teacher = TeacherSerializer(many=True, read_only=True)
+    # table = TableSerializer(read_only=True)
+
     class Meta:
         model = Group
-        fields = '__all__'
+        fields = ['id', 'name', 'title', 'course', 'teacher', 'table', 'created', 'updated', 'price', 'descriptions']
+
+
 
 
 class TableTypeSerializer(serializers.ModelSerializer):
@@ -102,65 +108,89 @@ class TableTypeSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'descriptions']
 
 
+
 class TableSerializer(serializers.ModelSerializer):
     class Meta:
         model = Table
         fields = ['id', 'type', 'descriptions']
 
 
+
 class StudentSerializer(serializers.ModelSerializer):
-    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    # user = serializers.PrimaryKeyRelatedField(
+    #     queryset=User.objects.all(), required=False
+    # )
+
     class Meta:
         model = Student
-        fields = '__all__'
+        fields = [
+            "phone",
+            "is_line",
+            "course",
+            "group",
+            "descriptions",
+            "is_active",
+            "is_graduated",
+        ]
+
 
 
 class AttendanceLevelSerializer(serializers.ModelSerializer):
+
     class Meta:
-        model = AttendanceLevel
-        fields = ['id', 'title', 'descriptions']
+        model = Attendance
+        fields = "__all__"
+
 
 
 class TeacherSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+    full_name = serializers.CharField(write_only=True)
+
     class Meta:
         model = Teacher
-        fields = ('__all__')
+        fields = ["full_name", "phone", "course", "departments", "descriptions"]
+
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
 
 
 
 class TeacherGroupSerializer(serializers.Serializer):
-    full_name = serializers.CharField()
-    phone = serializers.CharField()
-    group = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), many=True)
-
-    def validate(self, data):
-        full_name = data.get("full_name")
-        phone = data.get("phone")
-
-        try:
-            user = User.objects.get(full_name=full_name, phone=phone, is_teacher=True)
-        except User.DoesNotExist:
-            raise serializers.ValidationError("Foydalanuvchi topilmadi yoki u teacher emas!")
-
-        try:
-            teacher = Teacher.objects.get(user=user)
-        except Teacher.DoesNotExist:
-            raise serializers.ValidationError("Teacher topilmadi!")
-
-        data["teacher"] = teacher
-        return data
-
-    def create(self, validated_data):
-        teacher = validated_data["teacher"]
-        groups = validated_data["group"]
-        teacher.groups.set(groups)
-        return {"teacher": teacher.name, "group": [g.name for g in groups]}
+    teacher = TeacherSerializer(many=True)
+    group = GroupSerializer(many=True)
 
 
 
-class UserAndStudentSerializer(serializers.Serializer):
-    user = UserSerializer()
-    student = StudentSerializer()
+# class TeacherGroupSerializer(serializers.Serializer):
+#     full_name = serializers.CharField()
+#     phone = serializers.CharField()
+#     group = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), many=True)
+#
+#     def validate(self, data):
+#         full_name = data.get("full_name")
+#         phone = data.get("phone")
+#
+#         try:
+#             user = User.objects.get(full_name=full_name, phone=phone, is_teacher=True)
+#         except User.DoesNotExist:
+#             raise serializers.ValidationError("Foydalanuvchi topilmadi yoki u teacher emas!")
+#
+#         try:
+#             teacher = Teacher.objects.get(user=user)
+#         except Teacher.DoesNotExist:
+#             raise serializers.ValidationError("Teacher topilmadi!")
+#
+#         data["teacher"] = teacher
+#         return data
+#
+#     def create(self, validated_data):
+#         teacher = validated_data["teacher"]
+#         groups = validated_data["group"]
+#         teacher.groups.set(groups)
+#         return {"teacher": teacher.name, "group": [g.name for g in groups]}
+
 
 
 class UserAndStudentSerializer(serializers.Serializer):

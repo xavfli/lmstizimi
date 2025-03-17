@@ -3,6 +3,7 @@ from django.utils.dateparse import parse_date
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import permissions, status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAdminUser
 # from rest_framework.request.Request import user
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -86,8 +87,8 @@ class RegisterUserApi(APIView):
             serializer.validated_data['password'] = make_password(password)
             serializer.save()
 
-            if user.is_student:
-                Student.objects.create(user=user)
+            if User.is_student:
+                Student.objects.create(user=User)
 
 
             return Response({
@@ -119,108 +120,73 @@ class DepartmentsApiView(ModelViewSet):
     pagination_class = PageNumberPagination
 
 
+# class TeacherApiView(APIView):
+#     pagination_class = PageNumberPagination
+#
+#     @swagger_auto_schema(request_body=WorkerSerializer)
+#     def post(self, request):
+#         serializer = WorkerSerializer(data=request.data)
+#         if serializer.is_valid(raise_exception=True):
+#             user_id = str(serializer.validated_data.get('user'))
+#             try:
+#                 user = User.objects.get(phone=user_id)
+#                 user.is_teacher = 1
+#                 user.save()
+#                 serializer.save()
+#
+#             except Exception as e:
+#                 print(e)
+#             return Response(data=serializer.data)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     def get(self, request):
+#         teacher = Worker.objects.filter(user__is_teacher=True).order_by('-id')
+#         serializer = WorkerSerializer(instance=teacher, many=True)
+#         return Response(data=serializer.data)
+
+
 class TeacherApiView(APIView):
     pagination_class = PageNumberPagination
 
     @swagger_auto_schema(request_body=WorkerSerializer)
     def post(self, request):
         serializer = WorkerSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
+        if serializer.is_valid():
             user_id = str(serializer.validated_data.get('user'))
             try:
                 user = User.objects.get(phone=user_id)
-                user.is_teacher = 1
+                user.is_teacher = True
                 user.save()
                 serializer.save()
-
+                return Response(data=serializer.data, status=status.HTTP_201_CREATED)
             except Exception as e:
-                print(e)
-            return Response(data=serializer.data)
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+
+class TeacherListApiView(APIView):
     def get(self, request):
-        teacher = Worker.objects.filter(user__is_teacher=True).order_by('-id')
-        serializer = WorkerSerializer(instance=teacher, many=True)
-        return Response(data=serializer.data)
-
-
-class TeacherGroupView(APIView):
-    def get(self, request):
-        teachers = Teacher.objects.all()
-        groups = Group.objects.all()
-        serializer = TeacherGroupSerializer({"teacher": teachers, "group": groups})
-        return Response(serializer.data)
-
-    @swagger_auto_schema(request_body=TeacherGroupSerializer)
-    def post(self, request):
-        serializer = TeacherGroupSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
+        teachers = Worker.objects.filter(user__is_teacher=True).order_by('-id')
+        serializer = WorkerSerializer(teachers, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 
-# class WorkerApiView(APIView):
-#     pagination_class = PageNumberPagination
-#
-#     @swagger_auto_schema(request_body=WorkerSerializer)
-#     def post(self, request):
-#         serializer = WorkerSerializer(data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#             user_id = serializer.validated_data.get('user')
-#             user = User.objects.get(phone=user_id)
-#             user.is_staff = True
-#             user.save()
-#             serializer.save()
-#             return Response(data=serializer.data)
-#         else:
-#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
-#     def get(self, request):
-#         worker = Worker.objects.filter(user__is_staff=True).order_by('-id')
-#         serializer = WorkerSerializer(worker, many=True)
-#         return Response(data=serializer.data)
+class TeacherGroupsView(APIView):
+    def get(self, request, teacher_id):
+        try:
+            teacher = Teacher.objects.get(id=teacher_id)
+            groups = teacher.groups.all()
+            serializer = GroupSerializer(groups, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Teacher.DoesNotExist:
+            return Response({"error": "Teacher not found"}, status=status.HTTP_404_NOT_FOUND)
 
-# class WorkerApiView(APIView):
-#     pagination_class = PageNumberPagination
-#
-#     @swagger_auto_schema(request_body=WorkerSerializer)
-#     def post(self, request):
-#         serializer = WorkerSerializer(data=request.data)
-#         if serializer.is_valid(raise_exception=True):
-#             phone = serializer.validated_data.get('phone')
-#             full_name = serializer.validated_data.get('full_name')
-#
-#             # Telefon raqami bo‘yicha foydalanuvchini topish yoki yaratish
-#             user, created = User.objects.get_or_create(phone=phone, defaults={'full_name': full_name})
-#
-#             # Agar user avval yaratilgan bo‘lsa, ismni yangilash
-#             if not created:
-#                 user.full_name = full_name
-#                 user.save()
-#
-#             # Admin huquqlarini berish
-#             user.is_staff = True
-#             user.save()
-#
-#             # Worker obyektini yaratish
-#             worker = Worker.objects.create(
-#                 user=user,
-#                 course=serializer.validated_data.get('course'),
-#                 departments=serializer.validated_data.get('departments'),
-#                 descriptions=serializer.validated_data.get('descriptions')
-#             )
-#
-#             return Response(WorkerSerializer(worker).data, status=status.HTTP_201_CREATED)
-#
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-#
-#     def get(self, request):
-#         workers = Worker.objects.filter(user__is_staff=True).order_by('-id')
-#         serializer = WorkerSerializer(workers, many=True)
-#         return Response(data=serializer.data)
+
+
 
 class WorkerApiView(APIView):
     pagination_class = PageNumberPagination
@@ -277,32 +243,55 @@ class WorkerApiViewId(APIView):
 
 
 
-class StudentApiView(APIView):
-    pagination_class = CustomPagination
+# class StudentApiView(APIView):
+#     pagination_class = CustomPagination
+#
+#     @swagger_auto_schema(request_body=StudentSerializer)
+#     def post(self, request):
+#         serializer = StudentSerializer(data=request.data)
+#         if serializer.is_valid(raise_exception=True):
+#             user_id = serializer.validated_data.get('user')
+#             user = User.objects.get(phone=user_id)
+#             user.is_student = True
+#             user.save()
+#             serializer.save()
+#             return Response(data=serializer.data)
+#         else:
+#             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+#
+#     def get(self, request):
+#         student = Student.objects.filter(user__is_student=True).order_by('-id')
+#         group = Group.objects.all().order_by('-id')
+#         serializer_student = StudentSerializer(student, many=True)
+#         serializer_group = GroupSerializer(group, many=True)
+#         data = {
+#             "students": serializer_student.data,
+#             "groups": serializer_group.data,
+#         }
+#         return Response(data=data)
 
+class StudentApiView(APIView):
     @swagger_auto_schema(request_body=StudentSerializer)
     def post(self, request):
         serializer = StudentSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            user_id = serializer.validated_data.get('user')
-            user = User.objects.get(phone=user_id)
-            user.is_student = True
-            user.save()
-            serializer.save()
-            return Response(data=serializer.data)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def get(self, request):
-        student = Student.objects.filter(user__is_student=True).order_by('-id')
-        group = Group.objects.all().order_by('-id')
-        serializer_student = StudentSerializer(student, many=True)
-        serializer_group = GroupSerializer(group, many=True)
-        data = {
-            "students": serializer_student.data,
-            "groups": serializer_group.data,
-        }
-        return Response(data=data)
+        if serializer.is_valid(raise_exception=True):
+            phone = serializer.validated_data.get("phone")
+
+            #  User yaratish yoki mavjudini olish
+            user, created = User.objects.get_or_create(phone=phone, defaults={"is_student": True})
+
+            if not created:
+                user.is_student = True
+                user.save()
+
+            #  Student yaratish
+            student = serializer.save(user=user)  # user qo‘shildi!
+
+            return Response(StudentSerializer(student).data, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class StudentApiViewId(APIView):
@@ -336,10 +325,12 @@ class StudentApiViewId(APIView):
             return Response(data={'error': e})
 
 
+
 class GroupApiView(ModelViewSet):
     pagination_class = CustomPagination
     queryset = Group.objects.all().order_by('-id')
     serializer_class = GroupSerializer
+
 
 
 class GroupApi(APIView):
@@ -357,6 +348,18 @@ class GroupApi(APIView):
         }
 
         return Response(data=datas)
+
+
+# Guruh ichidagi studentlarni olish
+class GroupStudentsView(APIView):
+    def get(self, request, group_id):
+        try:
+            group = Group.objects.get(id=group_id)
+            students = group.student.all()
+            serializer = StudentSerializer(students, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Group.DoesNotExist:
+            return Response({"error": "Group not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class TableTypeApi(ModelViewSet):
@@ -430,65 +433,29 @@ class CourseApiView(ModelViewSet):
     pagination_class = CustomPagination
 
 
-class AdminUser:
-    pass
-
-
-
 class StudentCreateAPIView(APIView):
-    permission_classes = [AdminUser]
-
-    @swagger_auto_schema(request_body=UserAndStudentSerializer)
     def post(self, request):
-        user_data = request.data.get('user', {})
-        user_serializer = UserSerializer(data=user_data)
+        serializer = StudentSerializer(data=request.data)
 
-        if user_serializer.is_valid():
-            user = user_serializer.save(is_student=True)
-        else:
-            return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if serializer.is_valid():
+            phone = serializer.validated_data.get("phone")
 
-        student_data = request.data.get('student', {})
-        student_serializer = StudentSerializer(data=student_data)
+            # Foydalanuvchini yaratish yoki mavjudini olish
+            user, created = User.objects.get_or_create(phone=phone, defaults={"is_student": True})
+            if not created:
+                user.is_student = True
+                user.save()
 
-        if student_serializer.is_valid():
-            student = student_serializer.save(user=user)
+            # Student yaratish
+            student = serializer.save(user=user)
             return Response(StudentSerializer(student).data, status=status.HTTP_201_CREATED)
-        else:
-            user.delete()
-            return Response(student_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 
 class StudentStatisticsView(APIView):
     def get(self, request):
-        # user_dates = User.objects.aggregate(
-        #     data1=Min("created"),  # Eng eski foydalanuvchi yaratilgan sana
-        #     data2=Max("updated")  # Eng oxirgi foydalanuvchi o‘zgartirilgan sana
-        # )
-        #
-        # data1 = request.query_params.get("data1")
-        # data2 = request.query_params.get("data2")
-        #
-        # # Agar data1 yoki data2 string bo‘lsa, uni parse_date() orqali datetime ga aylantiramiz
-        # if isinstance(data1, str):
-        #     data1 = parse_date(data1)
-        # if isinstance(data2, str):
-        #     data2 = parse_date(data2)
-        #
-        #
-        # if not data1 or not data2:
-        #     print(data1, data2)
-        #     return Response({"error": "data1 va data2 talab qilinadi"}, status=status.HTTP_400_BAD_REQUEST)
-        #
-        #
-        # data1 = parse_date(data1)
-        # data2 = parse_date(data2)
-        #
-        # # Agar noto‘g‘ri sana formati bo‘lsa, xatolik qaytarish
-        # if not data1 or not data2:
-        #     return Response({"error": "Yaroqli sana formatini kiriting (YYYY-MM-DD)"}, status=status.HTTP_400_BAD_REQUEST)
-
         # Statistik ma’lumotlarni yig‘ish
         course_statistics = []
         courses = Course.objects.all()
