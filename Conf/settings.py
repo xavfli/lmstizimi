@@ -176,6 +176,7 @@ SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": True,  # Swagger’dan login talab qilinmaydi
 }
 
+heroku run python manage.py createsuperuser
 
 
 SIMPLE_JWT = {
