@@ -12,6 +12,8 @@ router.register(r'group', GroupApiView)
 router.register(r'tableType', TableTypeApi)
 router.register(r'table', TableApi)
 router.register(r'attendanceLevel', AttendanceLevelApi)
+router.register(r'commits', CommitViewSet)
+
 # router.register(r'Course', CourseApi)
 # router.register(r'teachergroup', TeacherGroupView)
 
@@ -39,4 +41,7 @@ urlpatterns = [
     path('filter-student/<int:student_id>/', StudentDetailView.as_view(), name='filter-student'),
     path('filter-group/<int:group_id>/', GroupDetailView.as_view(), name='filter-group'),
     path('students-Pagination/', StudentListView.as_view(), name='student-pagination'),
+    path('payme/create/', PaymentCreateView.as_view(), name='create_payment'),
+    path('payme/status/<str:transaction_id>/', PaymentStatusView.as_view(), name='payment_status'),
+    path('api/payme/create/', PaymentCreateView.as_view(), name='create_payment_api'),
 ]

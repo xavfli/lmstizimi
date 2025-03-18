@@ -1,12 +1,14 @@
 from django.contrib.auth.base_user import BaseUserManager, AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin, Permission
 from django.db import models
-# from app_users.models import Course
 from typing import TYPE_CHECKING
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.core.validators import RegexValidator
 import app_users.models
+from app_users.models import *
+from django.contrib.auth import get_user_model
 
+# User = get_user_model()
 
 
 if TYPE_CHECKING:
@@ -168,11 +170,14 @@ class Group(models.Model):
 
 
 class AttendanceLevel(models.Model):
-    title = models.CharField(max_length=50)
-    descriptions = models.CharField(max_length=500, blank=True, null=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    teacher = models.ForeignKey('app_users.Teacher', on_delete=models.CASCADE)
+    level = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.title
+        return f"{self.student} - {self.level}"
+
 
 
 
@@ -199,8 +204,43 @@ class staff(models.Model):
 
 class Teacher(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    name = models.CharField(max_length=50, unique=True)
+    full_name = models.CharField(max_length=50, unique=True)
     phone = models.CharField(max_length=17, unique=True)
 
+    def save(self, *args, **kwargs):
+        if not self.user:  # Agar `user` bo‘lmasa, yaratamiz
+            self.user = User.objects.create(phone=self.phone, full_name=self.full_name)
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return self.name
+        return self.full_name
+
+
+
+class Commit(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="commits")
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.teacher.user.username} -> {self.student.user.username}"
+
+
+class Payment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+    ]
+
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="payments")
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_id = models.CharField(max_length=255, unique=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.student.username} - {self.amount} - {self.status}"
+
+

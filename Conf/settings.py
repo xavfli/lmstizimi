@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from decouple import config
 from pathlib import Path
 from environs import Env
@@ -37,11 +39,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
     'Conf',
     'app_users',
     'environs',
     'psycopg2',
+    'faker',
 ]
 
 
@@ -161,3 +165,20 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # }
 
 AUTH_USER_MODEL = 'app_users.User'
+
+
+LOGIN_URL = "/admin/login/"
+SWAGGER_SETTINGS = {
+    "USE_SESSION_AUTH": True,  # Swagger’dan login talab qilinmaydi
+}
+
+
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "BLACKLIST_AFTER_ROTATION": True,  # Token logoutdan keyin ishlamasligi uchun
+}
+
+
+

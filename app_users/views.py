@@ -1,7 +1,8 @@
+from django.contrib.auth import logout
 from django.core.cache import cache
 from django.utils.dateparse import parse_date
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import permissions, status
+from rest_framework import permissions, status, viewsets, generics
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAdminUser
 # from rest_framework.request.Request import user
@@ -16,6 +17,10 @@ from app_users.pagination import CustomPagination
 import random
 from .models import User
 from django.db.models import Min,Max
+import uuid
+from rest_framework_simplejwt.tokens import RefreshToken
+
+
 
 
 class PhoneSendOTP(APIView):
@@ -508,5 +513,56 @@ class StudentListView(ListAPIView):
     pagination_class = CustomPagination
 
 
+
+class CommitViewSet(viewsets.ModelViewSet):
+    queryset = Commit.objects.all()
+    serializer_class = CommitSerializer
+    # permission_classes = [IsAuthenticated]
+    pagination_class = CustomPagination
+
+    def perform_create(self, serializer):
+        serializer.save(teacher=self.request.user.teacher)
+
+
+
+class PaymentCreateView(generics.CreateAPIView):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    permission_classes = [CustomPagination]
+
+    def perform_create(self, serializer):
+        transaction_id = str(uuid.uuid4())  # Yangi transaction ID yaratish
+        serializer.save(student=self.request.user, transaction_id=transaction_id, status='pending')
+        return Response({"message": "To'lov yaratildi. Transaction ID:", "transaction_id": transaction_id}, status=status.HTTP_201_CREATED)
+
+
+
+class PaymentStatusView(generics.RetrieveAPIView):
+    queryset = Payment.objects.all()
+    serializer_class = PaymentSerializer
+    permission_classes = [CustomPagination]
+
+    def get(self, request, transaction_id, *args, **kwargs):
+        try:
+            payment = Payment.objects.get(transaction_id=transaction_id)
+            return Response({"transaction_id": transaction_id, "status": payment.status})
+        except Payment.DoesNotExist:
+            return Response({"error": "To'lov topilmadi"}, status=status.HTTP_404_NOT_FOUND)
+
+
+
+class LogoutView(APIView):
+    permission_classes = [CustomPagination]
+
+    def post(self, request):
+        try:
+            refresh_token = request.data["refresh"]
+            token = RefreshToken(refresh_token)
+            token.blacklist()  # 🔹 Tokenni blacklist qilish
+
+            logout(request)
+            return Response({"detail": "Successfully logged out"}, status=200)
+        except Exception as e:
+            return Response({"error": "Invalid token"}, status=400)
 
 
