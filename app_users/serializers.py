@@ -116,22 +116,38 @@ class TableSerializer(serializers.ModelSerializer):
 
 
 
+# class StudentSerializer(serializers.ModelSerializer):
+#     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())  # `user` faqat `id` bilan kelishi kerak
+#
+#     class Meta:
+#         model = Student
+#         fields = '__all__'
+#
+#     def create(self, validated_data):
+#         user = validated_data.pop('user')  # `user` ni olish
+#         student = Student.objects.create(user=user, **validated_data)  # `user` ni qo‘shib student yaratish
+#         return student
+
+
 class StudentSerializer(serializers.ModelSerializer):
-    # user = serializers.PrimaryKeyRelatedField(
-    #     queryset=User.objects.all(), required=False
-    # )
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
+    group = serializers.PrimaryKeyRelatedField(many=True, queryset=Group.objects.all())  # Many-to-Many maydon
 
     class Meta:
         model = Student
-        fields = [
-            "phone",
-            "is_line",
-            "course",
-            "group",
-            "descriptions",
-            "is_active",
-            "is_graduated",
-        ]
+        fields = '__all__'
+
+    def create(self, validated_data):
+        user = validated_data.pop('user')
+        groups = validated_data.pop('group', [])
+
+        # Student obyektini yaratishdan oldin user bor yoki yo‘qligini tekshiramiz
+        if Student.objects.filter(user=user).exists():
+            raise serializers.ValidationError({"error": "Student already exists for this user."})
+
+        student = Student.objects.create(user=user, **validated_data)
+        student.group.set(groups)
+        return student
 
 
 
@@ -144,16 +160,30 @@ class AttendanceLevelSerializer(serializers.ModelSerializer):
 
 
 class TeacherSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
+    # user = UserSerializer()
+    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     full_name = serializers.CharField(write_only=True)
 
     class Meta:
         model = Teacher
-        fields = ["full_name", "phone", "course", "departments", "descriptions"]
+        fields = ["user" ,"full_name", "phone", "course", "departments", "descriptions"]
+
+
+    def create(self, validated_data):
+        user = validated_data.pop('user')  # 🛑 `user`ni alohida olib chiqamiz
+        teacher = Teacher.objects.create(user=user, **validated_data)  # ✅ `Teacher` obyektini yaratamiz
+        return teacher
+
+    def create(self, validated_data):
+        departments_data = validated_data.pop("departments", [])  # Department ID larini ajratib olamiz
+        teacher = Teacher.objects.create(**validated_data)  # Teacher yaratamiz
+        teacher.departments.set(departments_data)  # ManyToMany bog‘lash uchun .set() ishlatamiz
+        return teacher
+
 
 
     def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}"
+        return f"{obj.full_name}"
 
 
 
@@ -196,6 +226,7 @@ class TeacherGroupSerializer(serializers.Serializer):
 class UserAndStudentSerializer(serializers.Serializer):
     user = UserSerializer()
     student = StudentSerializer()
+
 
 
 class CommitSerializer(serializers.ModelSerializer):

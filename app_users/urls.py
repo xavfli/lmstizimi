@@ -44,4 +44,6 @@ urlpatterns = [
     path('payme/create/', PaymentCreateView.as_view(), name='create_payment'),
     path('payme/status/<str:transaction_id>/', PaymentStatusView.as_view(), name='payment_status'),
     path('api/payme/create/', PaymentCreateView.as_view(), name='create_payment_api'),
+    path('api/teacher/', TeacherCreateAPIView.as_view(), name='teacher-create'),
+    path('api/student/', StudentCreateAPIView.as_view(), name='student-create'),
 ]

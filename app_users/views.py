@@ -101,10 +101,12 @@ class RegisterUserApi(APIView):
                 'datail': 'Account create'
             })
 
+
     def get(self, request):
         users = User.objects.all().order_by('-id')
         serializer = UserSerializer(users, many=True)
         return Response(data=serializer.data)
+
 
 
 class ChangePasswordView(APIView):
@@ -119,10 +121,11 @@ class ChangePasswordView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
 class DepartmentsApiView(ModelViewSet):
     queryset = Departments.objects.all().order_by('-id')
     serializer_class = DepartmentsSerializer
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
 
 # class TeacherApiView(APIView):
@@ -152,7 +155,7 @@ class DepartmentsApiView(ModelViewSet):
 
 
 class TeacherApiView(APIView):
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     @swagger_auto_schema(request_body=WorkerSerializer)
     def post(self, request):
@@ -194,7 +197,7 @@ class TeacherGroupsView(APIView):
 
 
 class WorkerApiView(APIView):
-    pagination_class = PageNumberPagination
+    pagination_class = CustomPagination
 
     @swagger_auto_schema(request_body=WorkerSerializer)
     def post(self, request):
@@ -439,6 +442,7 @@ class CourseApiView(ModelViewSet):
 
 
 class StudentCreateAPIView(APIView):
+    pagination_class = CustomPagination
     def post(self, request):
         serializer = StudentSerializer(data=request.data)
 
@@ -566,3 +570,10 @@ class LogoutView(APIView):
             return Response({"error": "Invalid token"}, status=400)
 
 
+class TeacherCreateAPIView(generics.CreateAPIView):
+    queryset = Teacher.objects.all()
+    serializer_class = TeacherSerializer
+
+class StudentCreateAPIView(generics.CreateAPIView):
+    queryset = Student.objects.all()
+    serializer_class = StudentSerializer

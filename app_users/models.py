@@ -39,13 +39,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone_regex = RegexValidator(regex=r'^\+?1?\d{9,14}$',
                                  message="Phone number must be entered in the format: '+9989012345678'. Up to 14 digits allowed.")
     phone = models.CharField(validators=[phone_regex], max_length=17, unique=True)
-    full_name = models.CharField(max_length=50, null=True, blank=True)
+    full_name = models.CharField(max_length=50, null=True, blank=True, unique=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=True)
     is_user = models.BooleanField(default=True)
-    is_teacher = models.BooleanField(default=True)
-    is_student = models.BooleanField(default=True)
+    is_teacher = models.BooleanField(default=False)
+    is_student = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
@@ -98,7 +98,8 @@ class Departments(models.Model):
 
 class Student(models.Model):
     user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True , related_name='student')
-    phone = models.CharField(validators=[User.phone_regex], max_length=17, unique=True)
+    phone = models.CharField(validators=[User.phone_regex], max_length=17, null=True, blank=True)
+    teacher = models.ForeignKey('app_users.Teacher', on_delete=models.SET_NULL, null=True, blank=True)
     course = models.ForeignKey('app_users.Course', on_delete=models.SET_NULL, null=True, blank=True)
     group = models.ManyToManyField('Group', related_name='student')
     is_line = models.BooleanField(default=False)
@@ -108,8 +109,9 @@ class Student(models.Model):
     is_active = models.BooleanField(default=True)
     is_graduated = models.BooleanField(default=True)
 
+
     def __str__(self):
-        return self.phone
+        return self.user.full_name if self.user else "No User"
 
 
 
@@ -206,6 +208,9 @@ class Teacher(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     full_name = models.CharField(max_length=50, unique=True)
     phone = models.CharField(max_length=17, unique=True)
+    course = models.ForeignKey('app_users.Course', on_delete=models.RESTRICT, null=True, blank=True)
+    departments = models.ManyToManyField('app_users.Departments', related_name="teachers")
+    descriptions = models.CharField(max_length=500, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.user:  # Agar `user` bo‘lmasa, yaratamiz
@@ -241,6 +246,6 @@ class Payment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.student.username} - {self.amount} - {self.status}"
+        return f"{self.student.full_name} - {self.amount} - {self.status}"
 
 
